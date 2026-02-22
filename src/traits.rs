@@ -121,12 +121,17 @@ impl<T: Runnable> ParallelRun for Vec<T> {
     fn par_run(self) -> std::thread::Result<Vec<Self::Output>> {
         let threads = std::thread::available_parallelism()
             .map(|n| n.get())
-            .unwrap_or(1);
+            .unwrap_or(1)
+            .min(self.len());
 
+        if threads == 0 {
+            return Ok(Vec::new());
+        }
+        
         let chunk_size = self.len().div_ceil(threads);
 
         let mut iter = self.into_iter();
-        let mut handles = Vec::new();
+        let mut handles = Vec::with_capacity(threads);
 
         for _ in 0..threads {
             let chunk = iter.by_ref().take(chunk_size).collect::<Vec<_>>();

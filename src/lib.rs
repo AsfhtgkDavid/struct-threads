@@ -79,4 +79,10 @@ mod tests {
         let results = tasks.par_run().unwrap();
         assert_eq!(results, (0..1_000_000).map(|x| x * 2).collect::<Vec<_>>());
     }
+
+    #[test]
+    fn par_test_empty() {
+        let results = Vec::<TestTask>::new().par_run().unwrap();
+        assert!(results.is_empty());
+    }
 }
