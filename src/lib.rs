@@ -42,7 +42,8 @@
 //! let results = (0..10)
 //!     .map(MyTask)
 //!     .collect::<Vec<_>>()
-//!     .par_run();
+//!     .par_run()
+//!     .unwrap();
 //! 
 //!  assert_eq!(results, (0..10).map(|x| x * 2).collect::<Vec<_>>());
 //! ```
@@ -73,9 +74,9 @@ mod tests {
 
     #[test]
     fn par_test() {
-        let tasks = (0..100).map(TestTask).collect::<Vec<_>>();
+        let tasks = (0..1_000_000).map(TestTask).collect::<Vec<_>>();
 
-        let results = tasks.par_run();
-        assert_eq!(results, (0..100).map(|x| x * 2).collect::<Vec<_>>());
+        let results = tasks.par_run().unwrap();
+        assert_eq!(results, (0..1_000_000).map(|x| x * 2).collect::<Vec<_>>());
     }
 }

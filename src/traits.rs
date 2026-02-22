@@ -1,5 +1,3 @@
-use std::sync::{Arc, Mutex};
-
 /// A trait for defining a task that can be executed, typically in a separate thread.
 ///
 /// Types implementing `Runnable` must be `Send` and `'static` to ensure they
@@ -90,7 +88,7 @@ pub trait ParallelRun {
     ///
     /// # Returns
     ///
-    /// Returns a [`Vec<Self::Output>`] containing the results of each task, in the same order as the input vector.
+    /// Returns a [`std::thread::Result<Vec<Self::Output>>`] containing the results of each task, in the same order as the input vector.
     ///
     /// # Examples
     ///
@@ -109,44 +107,42 @@ pub trait ParallelRun {
     ///
     /// let tasks = vec![MathTask(1, 2), MathTask(3, 4), MathTask(5, 6)];
     ///
-    /// let results = tasks.par_run(); // Provided by the ParallelRun trait
+    /// let results = tasks
+    ///     .par_run()
+    ///     .unwrap(); // Provided by the ParallelRun trait
     /// assert_eq!(results, vec![3, 7, 11]);
     /// ```
-    fn par_run(self) -> Vec<Self::Output>;
+    fn par_run(self) -> std::thread::Result<Vec<Self::Output>>;
 }
 
 impl<T: Runnable> ParallelRun for Vec<T> {
     type Output = T::Output;
 
-    fn par_run(self) -> Vec<Self::Output> {
+    fn par_run(self) -> std::thread::Result<Vec<Self::Output>> {
         let threads = std::thread::available_parallelism()
             .map(|n| n.get())
             .unwrap_or(1);
 
-        let queue = Arc::new(Mutex::new(self.into_iter()));
-        let handles = (0..threads).map(|i| {
-            let queue = Arc::clone(&queue);
-            std::thread::spawn(move || {
-                let mut results = Vec::new();
-                loop {
-                    let task = {
-                        let mut q = queue.lock().unwrap();
-                        q.next()
-                    };
-                    match task {
-                        Some(task) => results.push(task.run()),
-                        None => break,
-                    }
-                }
-                (results, i)
-            })
-        });
+        let chunk_size = (self.len() + threads - 1) / threads;
 
-        let mut results = handles
+        let mut iter = self.into_iter();
+        let mut handles = Vec::new();
+
+        for _ in 0..threads {
+            let chunk = iter
+                .by_ref()
+                .take(chunk_size)
+                .collect::<Vec<_>>();
+            let handle = std::thread::spawn(move || {
+                chunk.into_iter().map(|t| t.run()).collect::<Vec<_>>()
+            });
+            handles.push(handle);
+        }
+
+        let results = handles
             .into_iter()
-            .map(|h| h.join().unwrap())
-            .collect::<Vec<_>>();
-        results.sort_by_key(|&(_, i)| i);
-        results.into_iter().flat_map(|(res, _)| res).collect()
+            .map(|h| h.join())
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(results.into_iter().flatten().collect())
     }
 }

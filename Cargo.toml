@@ -9,5 +9,11 @@ readme = "README.md"
 repository = "https://github.com/AsfhtgkDavid/struct-threads"
 keywords = ["thread", "runnable", "struct", "task"]
 categories = ["concurrency", "rust-patterns"]
-
 [dependencies]
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "par_run"
+harness = false
