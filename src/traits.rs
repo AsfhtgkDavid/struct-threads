@@ -127,7 +127,7 @@ impl<T: Runnable> ParallelRun for Vec<T> {
         if threads == 0 {
             return Ok(Vec::new());
         }
-        
+
         let chunk_size = self.len().div_ceil(threads);
 
         let mut iter = self.into_iter();
