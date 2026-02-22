@@ -123,19 +123,15 @@ impl<T: Runnable> ParallelRun for Vec<T> {
             .map(|n| n.get())
             .unwrap_or(1);
 
-        let chunk_size = (self.len() + threads - 1) / threads;
+        let chunk_size = self.len().div_ceil(threads);
 
         let mut iter = self.into_iter();
         let mut handles = Vec::new();
 
         for _ in 0..threads {
-            let chunk = iter
-                .by_ref()
-                .take(chunk_size)
-                .collect::<Vec<_>>();
-            let handle = std::thread::spawn(move || {
-                chunk.into_iter().map(|t| t.run()).collect::<Vec<_>>()
-            });
+            let chunk = iter.by_ref().take(chunk_size).collect::<Vec<_>>();
+            let handle =
+                std::thread::spawn(move || chunk.into_iter().map(|t| t.run()).collect::<Vec<_>>());
             handles.push(handle);
         }
 

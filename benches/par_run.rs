@@ -1,5 +1,5 @@
-use criterion::{criterion_group, criterion_main, Criterion};
-use struct_threads::{Runnable, ParallelRun};
+use criterion::{Criterion, criterion_group, criterion_main};
+use struct_threads::{ParallelRun, Runnable};
 
 struct TestTask(u64);
 
@@ -20,7 +20,8 @@ fn bench_sequential(c: &mut Criterion) {
 
     c.bench_function("sequential", |b| {
         b.iter(|| {
-            input.iter()
+            input
+                .iter()
                 .map(|&x| {
                     let mut acc = 0u64;
                     for i in 0..2000 {
@@ -38,7 +39,8 @@ fn bench_par_run(c: &mut Criterion) {
 
     c.bench_function("par_run", |b| {
         b.iter(|| {
-            input.iter()
+            input
+                .iter()
                 .map(|&x| TestTask(x))
                 .collect::<Vec<_>>()
                 .par_run()
