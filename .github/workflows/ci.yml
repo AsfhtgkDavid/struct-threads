@@ -13,14 +13,23 @@ jobs:
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest
+    permissions:
+      contents: write 
     steps:
       - uses: actions/checkout@v4
+      
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - name: Check formatting
-        run: cargo fmt --all -- --check
+          
+      - name: Fix formatting
+        run: cargo fmt --all
+        
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "refactor: auto-format Rust code [skip ci]"
 
   clippy:
     name: Clippy
