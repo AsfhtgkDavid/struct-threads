@@ -85,4 +85,26 @@ mod tests {
         let results = Vec::<TestTask>::new().par_run().unwrap();
         assert!(results.is_empty());
     }
+
+    #[test]
+    fn test_builder() {
+        let task = TestTask(10);
+        let builder = std::thread::Builder::new().name("custom_thread".to_string());
+        let handle = task.start_with_builder(builder);
+        assert_eq!(handle.join().unwrap(), 20);
+
+        struct BuilderTask;
+
+        impl Runnable for BuilderTask {
+            type Output = String;
+
+            fn run(self) -> Self::Output {
+                std::thread::current().name().unwrap().to_string()
+            }
+        }
+
+        let builder = std::thread::Builder::new().name("custom_thread".to_string());
+        let handle = BuilderTask.start_with_builder(builder);
+        assert_eq!(handle.join().unwrap(), "custom_thread".to_string());
+    }
 }

@@ -67,11 +67,23 @@ pub trait Thread: Runnable {
     /// assert_eq!(handle.join().unwrap(), 12);
     /// ```
     fn start(self) -> std::thread::JoinHandle<Self::Output>;
+
+    /// Spawns a new thread using a custom [`std::thread::Builder`] to execute the `run` method.
+    fn start_with_builder(
+        self,
+        builder: std::thread::Builder,
+    ) -> std::thread::JoinHandle<Self::Output>;
 }
 
 impl<T: Runnable> Thread for T {
     fn start(self) -> std::thread::JoinHandle<Self::Output> {
         std::thread::spawn(move || self.run())
+    }
+    fn start_with_builder(
+        self,
+        builder: std::thread::Builder,
+    ) -> std::thread::JoinHandle<Self::Output> {
+        builder.spawn(move || self.run()).unwrap()
     }
 }
 
