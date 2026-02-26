@@ -159,3 +159,21 @@ impl<T: Runnable> ParallelRun for Vec<T> {
         Ok(results.into_iter().flatten().collect())
     }
 }
+
+pub trait AsyncRunnable: Send + 'static {
+    type Output: Send + 'static;
+
+    async fn run(self) -> Self::Output;
+}
+
+#[cfg(feature = "tokio")]
+pub trait TokioTask: AsyncRunnable {
+    fn async_start(self) -> tokio::task::JoinHandle<Self::Output>;
+}
+
+#[cfg(feature = "tokio")]
+impl<T: AsyncRunnable> TokioTask for T {
+    fn async_start(self) -> tokio::task::JoinHandle<Self::Output> {
+        tokio::task::spawn(async move { self.run().await })
+    }
+}
