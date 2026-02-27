@@ -163,7 +163,7 @@ impl<T: Runnable> ParallelRun for Vec<T> {
 pub trait AsyncRunnable: Send + 'static {
     type Output: Send + 'static;
 
-    async fn run(self) -> Self::Output;
+    fn run(self) -> impl std::future::Future<Output = Self::Output> + Send;
 }
 
 #[cfg(feature = "tokio")]
@@ -182,20 +182,22 @@ impl<T: AsyncRunnable> TokioTask for T {
 pub trait TokioParallelRun {
     type Output: Send + 'static;
 
-    async fn async_par_run(self) -> Result<Vec<Self::Output>, tokio::task::JoinError>;
+    fn async_par_run(self) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send;
 }
 
 #[cfg(feature = "tokio")]
 impl <T: AsyncRunnable> TokioParallelRun for Vec<T> {
     type Output = T::Output;
 
-    async fn async_par_run(self) -> Result<Vec<Self::Output>, tokio::task::JoinError> {
-        let handles = self.into_iter().map(|t| tokio::task::spawn(async { t.run().await })).collect();
-        let mut result = Vec::with_capacity(handles.len());
-        
-        for handle in handles {
-            result.push(handle.await?);
+    fn async_par_run(self) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send {
+        async move {
+            let handles: Vec<_> = self.into_iter().map(|t| tokio::task::spawn(async { t.run().await })).collect();
+            let mut result = Vec::with_capacity(handles.len());
+
+            for handle in handles {
+                result.push(handle.await?);
+            }
+            Ok(result)
         }
-        Ok(result)
     }
 }

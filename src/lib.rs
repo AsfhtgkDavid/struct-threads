@@ -110,4 +110,133 @@ mod tests {
         let handle = BuilderTask.start_with_builder(builder);
         assert_eq!(handle.join().unwrap(), "custom_thread".to_string());
     }
+
+    #[cfg(feature = "tokio")]
+    mod async_tests {
+        use super::*;
+
+        struct AsyncTestTask(i32);
+
+        impl AsyncRunnable for AsyncTestTask {
+            type Output = i32;
+
+            fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+                async move {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                    self.0 * 2
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn test_async_task() {
+            let task = AsyncTestTask(21);
+            let handle = task.async_start();
+            assert_eq!(handle.await.unwrap(), 42);
+        }
+
+        #[tokio::test]
+        async fn test_async_parallel_run() {
+            let tasks = (0..10).map(AsyncTestTask).collect::<Vec<_>>();
+            let results = tasks.async_par_run().await.unwrap();
+            assert_eq!(results, (0..10).map(|x| x * 2).collect::<Vec<_>>());
+        }
+
+        #[tokio::test]
+        async fn test_async_parallel_run_empty() {
+            let tasks = Vec::<AsyncTestTask>::new();
+            let results = tasks.async_par_run().await.unwrap();
+            assert!(results.is_empty());
+        }
+
+        #[tokio::test]
+        async fn test_async_parallel_run_large() {
+            let tasks = (0..1_000).map(AsyncTestTask).collect::<Vec<_>>();
+            let results = tasks.async_par_run().await.unwrap();
+            assert_eq!(results, (0..1_000).map(|x| x * 2).collect::<Vec<_>>());
+        }
+
+        struct AsyncComplexTask {
+            value: i32,
+            multiplier: i32,
+        }
+
+        impl AsyncRunnable for AsyncComplexTask {
+            type Output = i32;
+
+            fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+                async move {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                    self.value * self.multiplier
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn test_async_complex_task() {
+            let task = AsyncComplexTask {
+                value: 7,
+                multiplier: 6,
+            };
+            let handle = task.async_start();
+            assert_eq!(handle.await.unwrap(), 42);
+        }
+
+        #[tokio::test]
+        async fn test_async_multiple_awaits() {
+            let task1 = AsyncTestTask(10);
+            let task2 = AsyncTestTask(20);
+            let task3 = AsyncTestTask(30);
+
+            let handle1 = task1.async_start();
+            let handle2 = task2.async_start();
+            let handle3 = task3.async_start();
+
+            let result1 = handle1.await.unwrap();
+            let result2 = handle2.await.unwrap();
+            let result3 = handle3.await.unwrap();
+
+            assert_eq!(result1, 20);
+            assert_eq!(result2, 40);
+            assert_eq!(result3, 60);
+        }
+
+        struct AsyncStringTask(String);
+
+        impl AsyncRunnable for AsyncStringTask {
+            type Output = String;
+
+            fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+                async move {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
+                    format!("Hello, {}!", self.0)
+                }
+            }
+        }
+
+        #[tokio::test]
+        async fn test_async_string_output() {
+            let task = AsyncStringTask("World".to_string());
+            let handle = task.async_start();
+            assert_eq!(handle.await.unwrap(), "Hello, World!");
+        }
+
+        #[tokio::test]
+        async fn test_async_parallel_run_strings() {
+            let tasks = vec![
+                AsyncStringTask("Alice".to_string()),
+                AsyncStringTask("Bob".to_string()),
+                AsyncStringTask("Charlie".to_string()),
+            ];
+            let results = tasks.async_par_run().await.unwrap();
+            assert_eq!(
+                results,
+                vec![
+                    "Hello, Alice!".to_string(),
+                    "Hello, Bob!".to_string(),
+                    "Hello, Charlie!".to_string()
+                ]
+            );
+        }
+    }
 }
