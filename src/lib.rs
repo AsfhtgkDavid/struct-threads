@@ -3,7 +3,12 @@
 //! `struct-threads` allows you to define your task state in a `struct`, implement the
 //! [`Runnable`] trait, and seamlessly spawn it using the [`Thread`] extension trait.
 //!
-//! # Example
+//! # Features
+//!
+//! - **Default**: Provides [`Runnable`], [`Thread`], and [`ParallelRun`] traits for standard thread-based execution
+//! - **`tokio`**: Adds [`AsyncRunnable`], [`TokioTask`], and [`TokioParallelRun`] traits for async task execution with Tokio runtime
+//!
+//! # Basic Example
 //!
 //! ```rust
 //! use struct_threads::{Runnable, Thread};
@@ -22,9 +27,9 @@
 //! assert_eq!(handle.join().unwrap(), 42);
 //! ```
 //!
-//! With `struct-threads`, you can also run multiple tasks in parallel using the [`ParallelRun`] extension trait.
+//! # Parallel Execution
 //!
-//! # Example
+//! With `struct-threads`, you can also run multiple tasks in parallel using the [`ParallelRun`] extension trait.
 //!
 //! ```rust
 //! use struct_threads::{Runnable, ParallelRun};
@@ -46,6 +51,63 @@
 //!     .unwrap();
 //!
 //!  assert_eq!(results, (0..10).map(|x| x * 2).collect::<Vec<_>>());
+//! ```
+//!
+//! # Custom Thread Configuration
+//!
+//! You can customize thread properties using the [`Thread::start_with_builder`] method:
+//!
+//! ```rust
+//! use std::thread::Builder;
+//! use struct_threads::{Runnable, Thread};
+//!
+//! struct MyTask(i32);
+//!
+//! impl Runnable for MyTask {
+//!     type Output = i32;
+//!     fn run(self) -> Self::Output { self.0 * 2 }
+//! }
+//!
+//! let builder = Builder::new()
+//!     .name("custom-thread".to_string())
+//!     .stack_size(4 * 1024 * 1024);
+//!
+//! let handle = MyTask(21).start_with_builder(builder);
+//! assert_eq!(handle.join().unwrap(), 42);
+//! ```
+//!
+//! # Async Support (requires `tokio` feature)
+//!
+//! Enable async support by adding the `tokio` feature:
+//!
+//! ```toml
+//! [dependencies]
+//! struct-threads = { version = "1.0", features = ["tokio"] }
+//! ```
+//!
+//! Then use [`AsyncRunnable`] and [`TokioTask`]:
+//!
+//! ```rust,ignore
+//! use struct_threads::{AsyncRunnable, TokioTask};
+//!
+//! struct AsyncTask(i32);
+//!
+//! impl AsyncRunnable for AsyncTask {
+//!     type Output = i32;
+//!
+//!     fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+//!         async move {
+//!             tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+//!             self.0 * 2
+//!         }
+//!     }
+//! }
+//!
+//! #[tokio::main]
+//! async fn main() {
+//!     let handle = AsyncTask(21).async_start();
+//!     assert_eq!(handle.await.unwrap(), 42);
+//! }
 //! ```
 
 pub mod traits;
