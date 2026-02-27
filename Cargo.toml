@@ -1,6 +1,6 @@
 [package]
 name = "struct-threads"
-version = "1.0.1"
+version = "1.1.0"
 edition = "2024"
 authors = ["Davíd Lishchyshen <david@daika.dev>"]
 description = "A simple library providing a Thread extension trait for Runnable tasks."
@@ -9,10 +9,17 @@ readme = "README.md"
 repository = "https://github.com/AsfhtgkDavid/struct-threads"
 keywords = ["thread", "runnable", "struct", "task"]
 categories = ["concurrency", "rust-patterns"]
+
+[features]
+default = []
+tokio = ["dep:tokio"]
+
 [dependencies]
+tokio = { version = "1.49.0", optional = true,features = ["rt"] }
 
 [dev-dependencies]
 criterion = "0.8.2"
+tokio = { version = "1.49.0", features = ["rt", "rt-multi-thread", "time", "macros"] }
 
 [[bench]]
 name = "par_run"

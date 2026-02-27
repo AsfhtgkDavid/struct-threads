@@ -15,13 +15,23 @@ While `std::thread::spawn` is powerful, complex thread logic often requires pass
 - **Simplifies testing** by allowing you to instantiate thread state without immediately spawning it.
 - **Provides a clear contract** for the thread's return value via associated types.
 
+## Features
+
+- **Default**: Provides `Runnable`, `Thread`, and `ParallelRun` traits for standard thread-based execution
+- **`tokio`**: Adds `AsyncRunnable`, `TokioTask`, and `TokioParallelRun` traits for async task execution with Tokio runtime
+
 ## Installation
 
 Install using `cargo`:
 
 ```bash
 cargo add struct-threads
+```
 
+For async support with Tokio:
+
+```bash
+cargo add struct-threads --features tokio
 ```
 
 ## Basic Usage
@@ -59,6 +69,68 @@ fn main() {
 
 ```
 
+## Advanced Usage: Parallel Execution
+
+You can run multiple tasks in parallel using the `ParallelRun` trait:
+
+```rust
+use struct_threads::{Runnable, ParallelRun};
+
+struct ComputeTask(i32);
+
+impl Runnable for ComputeTask {
+    type Output = i32;
+
+    fn run(self) -> Self::Output {
+        // Perform some heavy computation
+        self.0 * self.0
+    }
+}
+
+fn main() {
+    let tasks = (0..100)
+        .map(ComputeTask)
+        .collect::<Vec<_>>();
+    
+    // Runs tasks in parallel across available CPU cores
+    let results = tasks.par_run().unwrap();
+    
+    println!("Computed {} results", results.len());
+}
+```
+
+## Advanced Usage: Custom Thread Configuration
+
+Use `start_with_builder` to customize thread properties:
+
+```rust
+use std::thread::Builder;
+use struct_threads::{Runnable, Thread};
+
+struct MyTask(i32);
+
+impl Runnable for MyTask {
+    type Output = i32;
+
+    fn run(self) -> Self::Output {
+        self.0 * 2
+    }
+}
+
+fn main() {
+    let task = MyTask(21);
+    
+    let builder = Builder::new()
+        .name("my-custom-thread".to_string())
+        .stack_size(4 * 1024 * 1024); // 4 MB stack
+    
+    let handle = task.start_with_builder(builder);
+    let result = handle.join().unwrap();
+    
+    println!("Result: {}", result);
+}
+```
+
 ## Advanced Usage: Channels
 
 This pattern truly shines when your thread needs to communicate with the main thread or hold more complex state, like channels.
@@ -91,6 +163,80 @@ fn main() {
     // Wait for the message from the worker
     let result = rx.recv().unwrap();
     println!("Received: {}", result);
+}
+```
+
+## Async Support (Tokio)
+
+Enable the `tokio` feature to use async tasks:
+
+```toml
+[dependencies]
+struct-threads = { version = "1.0", features = ["tokio"] }
+tokio = { version = "1", features = ["rt", "macros"] }
+```
+
+### Basic Async Usage
+
+```rust
+use struct_threads::{AsyncRunnable, TokioTask};
+
+struct AsyncTask(i32);
+
+impl AsyncRunnable for AsyncTask {
+    type Output = i32;
+
+    fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+        async move {
+            // Perform async work
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            self.0 * 2
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let task = AsyncTask(21);
+    
+    // The .async_start() method is provided by the TokioTask trait
+    let handle = task.async_start();
+    
+    // Await the result
+    let result = handle.await.unwrap();
+    
+    println!("Result: {}", result);
+}
+```
+
+### Parallel Async Execution
+
+```rust
+use struct_threads::{AsyncRunnable, TokioParallelRun};
+
+struct AsyncComputeTask(i32);
+
+impl AsyncRunnable for AsyncComputeTask {
+    type Output = i32;
+
+    fn run(self) -> impl std::future::Future<Output = Self::Output> + Send {
+        async move {
+            tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+            self.0 * self.0
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    let tasks = (0..100)
+        .map(AsyncComputeTask)
+        .collect::<Vec<_>>();
+    
+    // Runs async tasks in parallel
+    let results = tasks.async_par_run().await.unwrap();
+    
+    println!("Computed {} results", results.len());
 }
 
 ```
