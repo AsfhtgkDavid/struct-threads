@@ -339,16 +339,24 @@ pub trait TokioParallelRun {
     ///
     /// Returns a future that resolves to `Result<Vec<Self::Output>, tokio::task::JoinError>`
     /// containing the results of each task, or a join error if any task panics.
-    fn async_par_run(self) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send;
+    fn async_par_run(
+        self,
+    ) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send;
 }
 
 #[cfg(feature = "tokio")]
-impl <T: AsyncRunnable> TokioParallelRun for Vec<T> {
+impl<T: AsyncRunnable> TokioParallelRun for Vec<T> {
     type Output = T::Output;
 
-    fn async_par_run(self) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send {
+    fn async_par_run(
+        self,
+    ) -> impl std::future::Future<Output = Result<Vec<Self::Output>, tokio::task::JoinError>> + Send
+    {
         async move {
-            let handles: Vec<_> = self.into_iter().map(|t| tokio::task::spawn(async { t.run().await })).collect();
+            let handles: Vec<_> = self
+                .into_iter()
+                .map(|t| tokio::task::spawn(async { t.run().await }))
+                .collect();
             let mut result = Vec::with_capacity(handles.len());
 
             for handle in handles {

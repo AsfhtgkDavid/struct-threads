@@ -112,10 +112,10 @@
 
 pub mod traits;
 
-pub use traits::{ParallelRun, Runnable, Thread, AsyncRunnable};
+pub use traits::{AsyncRunnable, ParallelRun, Runnable, Thread};
 
 #[cfg(feature = "tokio")]
-pub use traits::{TokioTask, TokioParallelRun};
+pub use traits::{TokioParallelRun, TokioTask};
 
 #[cfg(test)]
 mod tests {
