@@ -109,7 +109,7 @@
 //!     assert_eq!(handle.await.unwrap(), 42);
 //! }
 //! ```
-#![cfg_attr(docsrs, feature(doc_auto_cfg))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 pub mod traits;
 
 pub use traits::{AsyncRunnable, ParallelRun, Runnable, Thread};
